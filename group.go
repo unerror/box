@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 type GroupService struct {
@@ -27,23 +28,33 @@ type GroupCollection struct {
 
 // Docs: https://developers.box.com/docs/#groups-get-all-groups
 // TODO(ttacon): test it
-func (c *GroupService) Groups() (*http.Response, []Group, error) {
-	req, err := c.NewRequest(
-		"GET",
-		"/groups",
-		nil,
-	)
-	if err != nil {
-		return nil, nil, err
+func (c *GroupService) Groups(filter string) ([]Group, error) {
+	reqBody := map[string]string{}
+	if filter != "" {
+		reqBody["filter"] = filter
+	}
+	var data *GroupCollection
+	var groups []Group
+
+	for len(groups) != data.TotalCount && data.TotalCount == 0 {
+		reqBody["offset"] = strconv.Itoa(data.Offset + data.Limit)
+
+		req, err := c.NewRequest(
+			"GET",
+			"/groups",
+			reqBody,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = c.Do(req, data)
+		if data != nil {
+			groups = append(groups, data.Entries...)
+		}
 	}
 
-	var data *GroupCollection
-	resp, err := c.Do(req, data)
-	var groups []Group
-	if data != nil {
-		groups = data.Entries
-	}
-	return resp, groups, err
+	return groups, nil
 }
 
 // Docs: https://developers.box.com/docs/#groups-create-a-group
