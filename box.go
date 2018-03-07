@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
+	"strings"
 )
 
 const (
@@ -73,10 +74,26 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 	if err != nil {
 		return nil, err
 	}
+
 	buf := new(bytes.Buffer)
-	if body != nil {
-		if err = json.NewEncoder(buf).Encode(body); err != nil {
-			return nil, err
+	if strings.ToLower(method) == "get" {
+		v := url.Values{}
+		switch b := body.(type) {
+		case map[string]string:
+			for k, val := range b {
+				v.Set(k, val)
+			}
+		case url.Values:
+			v = b
+		}
+		resolvedUrl, err = url.Parse(fmt.Sprintf("%s?%s", resolvedUrl.String(), v.Encode()))
+
+	} else {
+		buf = new(bytes.Buffer)
+		if body != nil {
+			if err = json.NewEncoder(buf).Encode(body); err != nil {
+				return nil, err
+			}
 		}
 	}
 

@@ -31,14 +31,12 @@ type GroupCollection struct {
 func (c *GroupService) Groups(filter string) ([]Group, error) {
 	reqBody := map[string]string{}
 	if filter != "" {
-		reqBody["filter"] = filter
+		reqBody["name"] = filter
 	}
-	var data *GroupCollection
+	var data GroupCollection
 	var groups []Group
 
-	for len(groups) != data.TotalCount && data.TotalCount == 0 {
-		reqBody["offset"] = strconv.Itoa(data.Offset + data.Limit)
-
+	for len(groups) != data.TotalCount || data.TotalCount == 0 {
 		req, err := c.NewRequest(
 			"GET",
 			"/groups",
@@ -48,10 +46,14 @@ func (c *GroupService) Groups(filter string) ([]Group, error) {
 			return nil, err
 		}
 
-		_, err = c.Do(req, data)
-		if data != nil {
+		_, err = c.Do(req, &data)
+		if len(data.Entries) != 0 {
 			groups = append(groups, data.Entries...)
+		} else {
+			return groups, nil
 		}
+
+		reqBody["offset"] = strconv.Itoa(data.Offset + data.Limit)
 	}
 
 	return groups, nil
